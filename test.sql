@@ -54,29 +54,32 @@ INNER JOIN
 ------------------------------------------------------------------
 
 
--- Create temporary tables with preprocessed names
-CREATE TEMP TABLE temp_liq_customer AS
-SELECT
-    wcis_id,
-    upper(regexp_replace(short_name, '\\W', '')) AS clean_short_name
-FROM
-    v_liq_customer
-WHERE
-    wcis_id = '230527317';
+-- Ensure these indexes exist
+CREATE INDEX idx_liq_customer_wcis_id ON v_liq_customer (wcis_id);
+CREATE INDEX idx_wcis_legalentity_clientid ON v_wcis_legalentity (clientid);
 
-CREATE TEMP TABLE temp_wcis_legalentity AS
-SELECT
-    clientid,
-    upper(regexp_replace(legal_trade_name, '\\W', '')) AS clean_legal_trade_name
-FROM
-    v_wcis_legalentity;
-
--- Optimized query using temporary tables
+-- Optimized query using CTEs
+WITH preprocessed_customers AS (
+    SELECT
+        wcis_id,
+        upper(regexp_replace(short_name, '\\W', '')) AS clean_short_name
+    FROM
+        v_liq_customer
+    WHERE
+        wcis_id = '230527317'
+),
+preprocessed_entities AS (
+    SELECT
+        clientid,
+        upper(regexp_replace(legal_trade_name, '\\W', '')) AS clean_legal_trade_name
+    FROM
+        v_wcis_legalentity
+)
 SELECT
     COUNT(*) AS duplicates
 FROM
-    temp_liq_customer cust
+    preprocessed_customers cust
 INNER JOIN
-    temp_wcis_legalentity wcis
+    preprocessed_entities wcis
     ON cust.wcis_id <> wcis.clientid
     AND cust.clean_short_name = wcis.clean_legal_trade_name;
