@@ -1,0 +1,1 @@
+'^node:(stream|buffer|http|https|url|fs|path)$': '$1',
